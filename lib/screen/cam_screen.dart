@@ -44,14 +44,78 @@ class _CamScreenState extends State<CamScreen> {
             }
 
             return Column(
-              children: [],
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child:Stack(
+                    children: [
+                      renderMainView(),
+                      Align(
+                        alignment: Alignment.topLeft,
+                        child: Container(
+                          color: Colors.grey,
+                          height: 160,
+                          width: 120,
+                          child: renderSubView(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (engine != null) {
+                        await engine!.leaveChannel();
+                        engine = null;
+                      }
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('채널 나가기'),
+                  ),
+                ),
+              ],
             );
           }),
     );
   }
 
-  renderMainView(){
+  renderMainView() {
+    if (uid == null) {
+      return Center(
+        child: Text(
+          '채널에 참여해주세요',
+        ),
+      );
+    } else {
+      // 채널에 참여하고 있을 때
+      return AgoraVideoView(
+        controller: VideoViewController(
+          rtcEngine: engine!,
+          canvas: VideoCanvas(
+            uid: 0,
+          ),
+        ),
+      );
+    }
+  }
 
+  renderSubView() {
+    if (otherUid == null) {
+      return Center(
+        child: Text('채널에 유저가 없습니다.'),
+      );
+    } else {
+      return AgoraVideoView(
+          controller: VideoViewController.remote(
+              rtcEngine: engine!,
+              canvas: VideoCanvas(uid: otherUid),
+              connection: RtcConnection(channelId: CHANNEL_NAME),
+          ),
+      );
+    }
   }
 
   Future<bool> init() async {
@@ -114,19 +178,16 @@ class _CamScreenState extends State<CamScreen> {
           },
         ),
       );
+
+      await engine!.enableVideo();
+
+      await engine!.startPreview();
+
+      ChannelMediaOptions options = ChannelMediaOptions();
+
+      await engine!.joinChannel(
+          token: TEMP_TOKEN, channelId: CHANNEL_NAME, uid: 0, options: options);
     }
-
-    await engine!.enableVideo();
-
-    await engine!.startPreview();
-
-    ChannelMediaOptions options = ChannelMediaOptions();
-
-    await engine!.joinChannel(
-        token: TEMP_TOKEN,
-        channelId: CHANNEL_NAME,
-        uid: 0,
-        options: options);
 
     return true;
   }
